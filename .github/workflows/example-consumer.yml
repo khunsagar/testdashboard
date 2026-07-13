@@ -1,0 +1,51 @@
+# EXAMPLE workflow for CONSUMER repos (the apps under test).
+# Copy this into any product repo to have its test runs appear on the platform.
+name: Regression Tests (Platform-Reported)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        type: choice
+        options: [smoke, regression, api, e2e]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest   # swap for: arc-linux (ARC self-hosted)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Notify Start
+        id: notify
+        run: |
+          RESPONSE=$(curl -s -X POST "$PLATFORM_URL/api/v1/executions/start" \
+            -H "Content-Type: application/json" \
+            -d '{
+                  "github_run_id": "${{ github.run_id }}",
+                  "workflow_name": "${{ github.workflow }}",
+                  "repository": "${{ github.repository }}",
+                  "event": "${{ github.event_name }}",
+                  "branch": "${{ github.ref_name }}",
+                  "commit_sha": "${{ github.sha }}",
+                  "actor": "${{ github.actor }}",
+                  "trigger_type": "github_action",
+                  "test_type": "${{ inputs.test_type }}"
+                }')
+          echo "execution_id=$(echo $RESPONSE | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')" >> "$GITHUB_OUTPUT"
+        env:
+          PLATFORM_URL: ${{ vars.PLATFORM_URL }}
+
+      - name: Run Tests
+        run: npm test   # placeholder — replace with real test command
+
+      - name: Notify Finish
+        if: always()
+        run: |
+          curl -s -X POST "$PLATFORM_URL/api/v1/executions/${{ steps.notify.outputs.execution_id }}/finish" \
+            -H "Content-Type: application/json" \
+            -d '{"result": "${{ job.status }}"}'
+        env:
+          PLATFORM_URL: ${{ vars.PLATFORM_URL }}
