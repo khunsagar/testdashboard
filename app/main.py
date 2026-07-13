@@ -33,14 +33,3 @@ from app.api.v1.webhooks.router import router as webhooks_router  # noqa: E402
 
 app.include_router(executions_router, prefix="/api/v1/executions", tags=["executions"])
 app.include_router(webhooks_router, prefix="/api/v1/webhooks", tags=["webhooks"])
-
-
-# --- PLACEHOLDER table creation ---
-# create_all is fine for the SQLite dev DB. In Step 7 this is REPLACED
-# by Alembic migrations (`alembic upgrade head`) — never use create_all
-# against real Postgres in dev/staging/prod.
-from app.db.base import Base  # noqa: E402
-from app.db.session import engine  # noqa: E402
-from app.models import execution  # noqa: F401, E402  (import registers the model)
-
-Base.metadata.create_all(bind=engine)
